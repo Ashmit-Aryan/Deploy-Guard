@@ -11,7 +11,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/deployguard-demo
+  IMAGE_NAME: ashmit-aryan/deployguard-demo
 
 jobs:
   build-and-push:
