@@ -1,0 +1,7 @@
+BLUE_PORT = 8001
+GREEN_PORT = 8002
+
+ENVIRONMENT_PORTS = {
+    "blue": BLUE_PORT,
+    "green": GREEN_PORT,
+}
