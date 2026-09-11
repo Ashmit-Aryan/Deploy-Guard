@@ -1,10 +1,10 @@
-from fastapi import FastAPI # pyright: ignore[reportMissingImports, reportAttributeAccessIssue]
-from prometheus_fastapi_instrumentator import Instrumentator # pyright: ignore[reportMissingImports, reportAttributeAccessIssue]
+from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 app = FastAPI(
     title="DeployGuard Demo Application",
-    version="2.0.0"
+    version="3.0.0"
 )
 
 
@@ -12,12 +12,14 @@ app = FastAPI(
 def root():
     return {
         "message": "DeployGuard Demo Application",
-        "version": "2.0.0"
+        "version": "3.0.0"
     }
 
 
 @app.get("/health")
 def health():
+    # Deliberately healthy so deployment passes
+    # the health check and reaches monitoring.
     return {
         "status": "healthy"
     }
@@ -26,8 +28,19 @@ def health():
 @app.get("/version")
 def version():
     return {
-        "version": "2.0.0"
+        "version": "3.0.0"
     }
+
+
+@app.get("/api/demo")
+def buggy_endpoint():
+    # Deliberately broken endpoint.
+    # This is used to generate 5xx errors during
+    # the automatic rollback demonstration.
+    raise HTTPException(
+        status_code=500,
+        detail="Intentional v3 application failure"
+    )
 
 
 # Prometheus instrumentation

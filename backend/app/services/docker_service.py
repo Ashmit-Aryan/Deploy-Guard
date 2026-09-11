@@ -1,11 +1,13 @@
 import docker # pyright: ignore[reportMissingModuleSource]
 
+from app.core.config import CONTAINER_SOCKET
+
 
 class DockerService:
 
     def __init__(self):
         self.client = docker.DockerClient(
-            base_url="unix:///run/user/1000/podman/podman.sock"
+            base_url=CONTAINER_SOCKET
         )
 
     def test_connection(self):
@@ -13,6 +15,12 @@ class DockerService:
 
     def get_containers(self):
         return self.client.containers.list()
+
+    def get_container(self, container_id_or_name: str):
+        try:
+            return self.client.containers.get(container_id_or_name)
+        except docker.errors.NotFound: # pyright: ignore[reportAttributeAccessIssue]
+            return None
 
     def pull_image(self, image_name: str):
         try:

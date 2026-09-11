@@ -1,28 +1,60 @@
 import { Rocket } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function DeployForm({
+  application,
   deploy,
   loading,
   error,
   deployment,
 }) {
-  const [image, setImage] = useState("deployguard-demo:v2");
-  const [containerName, setContainerName] = useState(
-    "deployguard-demo-green"
+  const [image, setImage] = useState(
+    application?.image_repository
+      ? `${application.image_repository}:v2`
+      : ""
   );
+
+  const [version, setVersion] = useState(
+    application?.current_version || "2.0.0"
+  );
+
+  useEffect(() => {
+    if (!application) {
+      return;
+    }
+
+    setImage(
+      application.image_repository
+        ? `${application.image_repository}:v2`
+        : ""
+    );
+
+    setVersion(
+      application.current_version || "2.0.0"
+    );
+  }, [application]);
 
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (loading) {
+    if (
+      loading ||
+      !application ||
+      !version ||
+      !image
+    ) {
       return;
     }
 
-    await deploy(image, containerName);
+    await deploy(
+      application.id,
+      version,
+      image
+    );
   }
 
-  const status = deployment?.status || "pending";
+  const status =
+    deployment?.status || "pending";
 
   const isDeploying = [
     "deploying",
@@ -47,7 +79,7 @@ function DeployForm({
             </h2>
 
             <p className="text-sm text-slate-400">
-              Start a Blue-Green deployment
+              {application?.name || "No application selected"}
             </p>
           </div>
         </div>
@@ -57,6 +89,22 @@ function DeployForm({
         onSubmit={handleSubmit}
         className="space-y-4"
       >
+        <div>
+          <label className="mb-2 block text-sm text-slate-400">
+            Version
+          </label>
+
+          <input
+            value={version}
+            onChange={(event) =>
+              setVersion(event.target.value)
+            }
+            disabled={isDeploying}
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="2.0.0"
+          />
+        </div>
+
         <div>
           <label className="mb-2 block text-sm text-slate-400">
             Docker Image
@@ -69,29 +117,19 @@ function DeployForm({
             }
             disabled={isDeploying}
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="my-app:v2"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm text-slate-400">
-            Container Name
-          </label>
-
-          <input
-            value={containerName}
-            onChange={(event) =>
-              setContainerName(event.target.value)
-            }
-            disabled={isDeploying}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="deployguard-demo-green"
+            placeholder="deployguard-demo:v2"
           />
         </div>
 
         <button
           type="submit"
-          disabled={loading || isDeploying}
+          disabled={
+            loading ||
+            isDeploying ||
+            !application ||
+            !version ||
+            !image
+          }
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Rocket size={18} />
@@ -105,17 +143,17 @@ function DeployForm({
       {deployment && (
         <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950 p-4">
           <p className="text-xs uppercase tracking-wider text-slate-500">
-            Current Status
+            Current Deployment
           </p>
 
           <p className="mt-1 font-semibold capitalize">
             {status.replaceAll("_", " ")}
           </p>
 
-          {deployment.active_environment && (
+          {deployment.target_environment && (
             <p className="mt-1 text-sm text-slate-500">
-              Active environment:{" "}
-              {deployment.active_environment}
+              Target:{" "}
+              {deployment.target_environment}
             </p>
           )}
         </div>

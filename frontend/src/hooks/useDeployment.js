@@ -1,91 +1,136 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 import {
   deployApplication,
   getDeploymentStatus,
-  rollbackDeployment,
 } from "../services/api";
 
+const TERMINAL_STATES = new Set([
+  "success",
+  "failed",
+  "rolled_back",
+]);
+
 function useDeployment() {
-  const [loading, setLoading] = useState(false);
-  const [deployment, setDeployment] = useState(null);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] =
+    useState(false);
 
-  async function deploy(image, containerName) {
-    try {
-      setLoading(true);
-      setError(null);
+  const [deployment, setDeployment] =
+    useState(null);
 
-      const result = await deployApplication(
-        image,
-        containerName
-      );
+  const [deploymentId, setDeploymentId] =
+    useState(null);
 
-      setDeployment(result);
+  const [error, setError] =
+    useState(null);
 
-      return result;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }
+  const deploy = useCallback(
+    async (
+      applicationId,
+      version,
+      image
+    ) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  async function refreshStatus() {
-    try {
-      const result = await getDeploymentStatus();
+        const result =
+          await deployApplication(
+            applicationId,
+            version,
+            image
+          );
 
-      setDeployment(result);
-      setError(null);
+        setDeployment(result);
+        setDeploymentId(
+          result.deployment_id
+        );
 
-      return result;
-    } catch (err) {
-      setError(err.message);
-    }
-  }
+        return result;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const refreshStatus =
+    useCallback(async () => {
+      if (!deploymentId) {
+        return null;
+      }
+
+      try {
+        const result =
+          await getDeploymentStatus(
+            deploymentId
+          );
+
+        setDeployment(result);
+        setError(null);
+
+        return result;
+      } catch (err) {
+        setError(err.message);
+        return null;
+      }
+    }, [deploymentId]);
 
   useEffect(() => {
-    refreshStatus();
+    if (!deploymentId) {
+      return undefined;
+    }
 
-    const interval = setInterval(() => {
-      refreshStatus();
-    }, 2000);
+    let cancelled = false;
 
-    return () => clearInterval(interval);
-  }, []);
+    const poll = async () => {
+      if (!cancelled) {
+        await refreshStatus();
+      }
+    };
 
-  async function rollback(containerName, previousBaseUrl) {
-  try {
-    setLoading(true);
-    setError(null);
+    poll();
 
-    const result = await rollbackDeployment(
-      containerName,
-      previousBaseUrl
-    );
+    const interval =
+      setInterval(async () => {
+        if (cancelled) {
+          return;
+        }
 
-    setDeployment(result);
+        const result =
+          await refreshStatus();
 
-    return result;
-  } catch (err) {
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-}
+        if (
+          result &&
+          TERMINAL_STATES.has(
+            result.status
+          )
+        ) {
+          clearInterval(interval);
+        }
+      }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [deploymentId, refreshStatus]);
 
   return {
     loading,
     deployment,
+    deploymentId,
     error,
     deploy,
-    rollback,
     refreshStatus,
   };
 }
-
-
 
 export default useDeployment;

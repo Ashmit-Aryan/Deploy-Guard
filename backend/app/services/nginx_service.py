@@ -1,14 +1,14 @@
 import subprocess
 from pathlib import Path
 
-from app.core.config import ENVIRONMENT_PORTS
+from app.core.config import ENVIRONMENT_PORTS, NGINX_UPSTREAM_PATH
 
 
 class NginxService:
 
     def __init__(
         self,
-        config_path: str = "/etc/nginx/conf.d/deployguard-upstream.conf"
+        config_path: str = NGINX_UPSTREAM_PATH
     ):
         self.config_path = Path(config_path)
 
