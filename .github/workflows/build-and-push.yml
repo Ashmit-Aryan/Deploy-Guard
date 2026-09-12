@@ -1,9 +1,9 @@
-name: Build and Push DeployGuard Demo
+name: Build, Push and Deploy
 
 on:
   push:
     branches:
-      - main
+      - master
 
 permissions:
   contents: read
@@ -14,7 +14,7 @@ env:
   IMAGE_NAME: ashmit-aryan/deployguard-demo
 
 jobs:
-  build-and-push:
+  build-test-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -53,3 +53,20 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Notify DeployGuard
+        env:
+          DEPLOYGUARD_WEBHOOK_URL: ${{ secrets.DEPLOYGUARD_WEBHOOK_URL }}
+          DEPLOYGUARD_WEBHOOK_SECRET: ${{ secrets.DEPLOYGUARD_WEBHOOK_SECRET }}
+          DEPLOYGUARD_APPLICATION_ID: ${{ secrets.DEPLOYGUARD_APPLICATION_ID }}
+        run: |
+          curl --fail-with-body --request POST \
+            "${DEPLOYGUARD_WEBHOOK_URL}/api/webhooks/github" \
+            --header "Content-Type: application/json" \
+            --header "X-DeployGuard-Secret: ${DEPLOYGUARD_WEBHOOK_SECRET}" \
+            --data '{
+              "application_id": "'"${DEPLOYGUARD_APPLICATION_ID}"'",
+              "version": "'"${GITHUB_SHA}"'",
+              "image": "'"${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"'",
+              "commit_sha": "'"${GITHUB_SHA}"'"
+            }'
