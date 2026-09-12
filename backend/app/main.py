@@ -8,7 +8,8 @@ from app.schemas.deployment import DeploymentCreate
 from app.core.database import Base, engine, get_db
 from app.models.application import Application
 from app.schemas.application import ApplicationCreate
-
+from app.core.config import DEPLOYGUARD_WEBHOOK_SECRET
+from fastapi import Header
 from app.schemas.webhook import GitHubDeploymentWebhook
 from app.core.database import SessionLocal
 
@@ -376,13 +377,24 @@ def get_deployment_status(
         "completed_at": deployment.completed_at,
     }
 
-
 @app.post("/api/webhooks/github")
 def github_webhook(
     payload: GitHubDeploymentWebhook,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    x_deployguard_secret: str | None = Header(
+        default=None,
+        alias="X-DeployGuard-Secret"
+    )
 ):
+    if (
+        not DEPLOYGUARD_WEBHOOK_SECRET
+        or x_deployguard_secret != DEPLOYGUARD_WEBHOOK_SECRET
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid webhook secret"
+        )
     application = (
         db.query(Application)
         .filter(
@@ -390,7 +402,6 @@ def github_webhook(
         )
         .first()
     )
-
     if application is None:
         raise HTTPException(
             status_code=404,

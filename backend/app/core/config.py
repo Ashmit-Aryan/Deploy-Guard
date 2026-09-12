@@ -17,3 +17,8 @@ CONTAINER_SOCKET = os.getenv(
     "DEPLOYGUARD_CONTAINER_SOCKET",
     "unix:///run/user/1000/podman/podman.sock",
 )
+
+DEPLOYGUARD_WEBHOOK_SECRET = os.getenv(
+    "DEPLOYGUARD_WEBHOOK_SECRET",
+    ""
+)
